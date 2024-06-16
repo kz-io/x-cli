@@ -1,15 +1,23 @@
-/**
- * @copyright 2020-2024 integereleven. All rights reserved. MIT license.
- * @file Exports the internal constants.
- */
+import { CliAllTextTypes, CliVerbosityLevel } from '../types/type_aliases.ts';
 
-import { CliVerbosity } from '../types/enums.ts';
+export const verbosityIndex = [
+  'all',
+  'trace',
+  'debug',
+  'info',
+  'warning',
+  'error',
+  'none',
+] as const;
 
-import type { ParseOptions } from '@std/cli';
-
-export const defaultParseOptions: ParseOptions<undefined, 'verbose'> = {
-  string: ['verbose'],
-  default: {
-    verbose: CliVerbosity.None,
-  },
-};
+export const textTypeVerbosityMap = new Map<CliAllTextTypes, CliVerbosityLevel>([
+  ['label', 'none'],
+  ['description', 'none'],
+  ['complete', 'none'],
+  ['error', 'error'],
+  ['warning', 'warning'],
+  ['info', 'info'],
+  ['success', 'info'],
+  ['debug', 'debug'],
+  ['trace', 'trace'],
+]);

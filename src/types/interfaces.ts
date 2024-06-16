@@ -1,123 +1,394 @@
-/**
- * @copyright 2020-2024 integereleven. All rights reserved. MIT license.
- * @file Interfaces for the module. For type aliases, see ./type_aliases.ts.
- */
+import { type ParseOptions } from '@std/cli';
 
-import { ParseOptions } from '@std/cli';
-
-import { CliVerbosity } from './enums.ts';
 import type {
-  AsyncNumericTransformFn,
-  AsyncNumericValidationFn,
-  AsyncStringTransformFn,
-  AsyncStringValidationFn,
-  NumericTransformFn,
-  NumericValidationFn,
-  StringTransformFn,
-  StringValidationFn,
+  CliDebugTextTypes,
+  CliStateTextTypes,
+  CliStringGeneratorFn,
+  CliTextAcknowledgementFn,
+  CliTextTypes,
+  CliAllTextTypes,
+  CliWhenFn,
+  CliPrompts,
 } from './type_aliases.ts';
 
-export interface ICliConfig {
-  banner: string;
-  color: number;
-  displayName: string;
-  separator: string;
-  args: string[];
-  parseOptions: ParseOptions;
+/**
+ * The arguments passed to functions in the CLI.
+ */
+export interface TCliFnArgs<
+  T extends Record<string, unknown> = Record<string, unknown>,
+> {
+  /**
+   * The arguments currently consumed by the CLI.
+   */
+  args: Partial<T>;
 }
 
-export interface TLanguageSpec<T> {
-  lang: string;
-  strings: T;
+/**
+ * The base interface for all CLI text outputs.
+ *
+ * Debug messages are displayed based on verbosity level.
+ *
+ * @example
+ * ```ts
+ * import {TCliTextBasePrompt} from './interfaces.ts';
+ *
+ * const prompt: TCliTextBasePrompt = {
+ *   type: 'text',
+ *   message: 'Welcome to the CLI!',
+ * };
+ *
+ * const debug: TCliTextBasePrompt = {
+ *   type: 'debug',
+ *   message: 'Debugging the CLI...',
+ * };
+ * ```
+ */
+export interface TCliTextBasePrompt<
+  T extends Record<string, unknown> = Record<string, unknown>,
+  K extends CliAllTextTypes = CliTextTypes | CliDebugTextTypes,
+> {
+  /**
+   * The type of text to display.
+   */
+  type: K;
+
+  /**
+   * The message to display.
+   */
+  message: string | CliStringGeneratorFn<T>;
 }
 
-export interface ICliOptions {
-  verbosity: CliVerbosity;
-  lang: string;
+/**
+ * A text message that is displayed based on the verbosity level.
+ *
+ * Messages are displayed based on the following priority:
+ * - `required: true`
+ * - `when => true`
+ * - verbosity level
+ *
+ * @example
+ * ```ts
+ * import {TCliStateTextPrompt} from './interfaces.ts';
+ *
+ * const warning: TCliStateTextPrompt = {
+ *   type: 'warning',
+ *   message: 'Warning: This is a warning message!',
+ *   required: true,
+ * };
+ *
+ * const info: TCliStateTextPrompt = {
+ *   type: 'info',
+ *   message: 'Info: This is an info message!',
+ *   when: ({args}) => args.name === 'John',
+ * };
+ * ```
+ */
+export interface TCliStateTextPrompt<
+  T extends Record<string, unknown> = Record<string, unknown>,
+> extends TCliTextBasePrompt<T, CliStateTextTypes> {
+  /**
+   * Conditionally display the message. Overrides verbosity level.
+   */
+  when?: CliWhenFn<T>;
+
+  /**
+   * Whether the message is required to be displayed. Overrides `when` and verbosity level.
+   */
+  required?: boolean;
 }
 
-export interface ICliConfirmOptions {
-  message: string;
+/**
+ * A text message that requires acknowledgement.
+ *
+ * Messages are displayed based on the following priority:
+ * - `acknowledge: true`
+ * - `required: true`
+ * - `when => true`
+ * - verbosity level
+ *
+ * @example
+ * ```ts
+ * import {TAcknowledgebleText} from './interfaces.ts';
+ *
+ * const acknowledge: TAcknowledgebleText = {
+ *   type: 'info',
+ *   message: 'Please acknowledge this message.',
+ *   acknowledge: true,
+ *   onAcknowledgement: ({args}) => console.log('Acknowledged!'),
+ * };
+ * ```
+ */
+export interface TAcknowledgeableTextPrompt<
+  T extends Record<string, unknown> = Record<string, unknown>
+> extends TCliStateTextPrompt<T> {
+  /**
+   * Whether the message requires acknowledgement. Overrides `required`, `when`, and verbosity level.
+   */
+  acknowledge: boolean;
+
+  /**
+   * The function to call when the message is acknowledged.
+   */
+  onAcknowledgement?: CliTextAcknowledgementFn<T>;
 }
 
-export interface ICliTextPromptOptions {
-  message: string;
-  helpText?: string;
+/**
+ * A prompt that diverges into branches depending on a selection.
+ * 
+ * @example
+ * ```ts
+ * import {TCliDivergencePrompt} from './interfaces.ts';
+ * 
+ * const prompt: TCliDivergencePrompt = {
+ *   type: 'divergence',
+ *   select: ({args}) => args.branch,
+ *   branches: {
+ *     branch1: [
+ *       {
+ *         type: 'description',
+ *         message: 'Branch 1 selected!',
+ *       }
+ *     ],
+ *     branch2: [
+ *       {
+ *         type: 'description',
+ *         message: 'Branch 2 selected!',
+ *       }
+ *     ],
+ *   },
+ * };
+ * ```
+ */
+export interface TCliDivergencePrompt<
+T extends Record<string, unknown> = Record<string, unknown>,
+K extends string = string,
+> {
+  /**
+   * The type of prompt.
+   */
+  type: 'divergence';
+
+  /**
+   * The function to select a branch.
+   * 
+   * @param args The arguments passed to the selector.
+   * @returns The key of the branch to select.
+   */
+  select: (args: TCliFnArgs<T>) => K | Promise<K>;
+
+  /**
+   * The branches to diverge into.
+   */
+  branches: {
+    /**
+     * The key of the branch.
+     */
+    [P in K]: CliPrompts<T>[];
+  };
 }
 
-export interface TCliTextPromptDefinedDefaultValueOptions<
-  T extends string | number | boolean = string,
-> extends ICliTextPromptOptions {
-  defaultValue: T;
+/**
+ * A base prompt for all CLI input prompts.
+ */
+export interface TCliInputBasePrompt<
+T extends Record<string, unknown> = Record<string, unknown>,
+> {
+  /**
+   * The CLI key of the prompt.
+   */
+  name: keyof T;
+
+  /**
+   * The message to display.
+   */
+  message: string | CliStringGeneratorFn<T>;
+
+  /**
+   * Whether to force the request if provided via CLI argument.
+   */
+  force?: boolean;
 }
 
-export interface TCliTextPromptDefinedRequiredOptions
-  extends ICliTextPromptOptions {
-  required: true;
+/**
+ * A prompt that requests a confirmation.
+ */
+export interface TCliInputConfirmPrompt<
+T extends Record<string, unknown> = Record<string, unknown>,
+> extends TCliInputBasePrompt<T> {
+  /**
+   * The type of prompt.
+   */
+  type: 'confirm';
 }
 
-export interface TCliTextPromptChoiceOptions<
-  T extends Record<string, string> = Record<string, string>,
-> extends ICliTextPromptOptions {
-  choices: T;
+/**
+ * Common prompt properties for text, number, and yesno prompts.
+ */
+export interface ICliInputCommonPrompt<
+  T extends Record<string, unknown> = Record<string, unknown>,
+  V extends string | number | boolean = string,
+> extends TCliInputBasePrompt<T> {
+  /**
+   * The help text to display.
+   */
+  helpText?: string | CliStringGeneratorFn<T>;
+
+  /**
+   * The default value for the prompt.
+   */
+  defaultValue?: V;
+
+  /**
+   * Whether the prompt is required. This is not the same as force.
+   */
+  required?: boolean;
 }
 
-export interface TCliTextPromptSyncTransformOptions
-  extends ICliTextPromptOptions {
-  transformFn: StringTransformFn;
+/**
+ * Prompts that support transforms of the input value.
+ */
+export interface TCliInputTransformPrompt<
+  T extends Record<string, unknown> = Record<string, unknown>,
+  V extends string | number = string,
+> extends ICliInputCommonPrompt<T> {
+  /**
+   * The function to transform the input value.
+   * 
+   * @param value The input value.
+   * @returns The transformed value.
+   */
+  transform?: (value: V) => V | Promise<V>;
 }
 
-export interface TCliTextPromptAsyncTransformOptions
-  extends ICliTextPromptOptions {
-  transformFn: AsyncStringTransformFn;
+/**
+ * A prompt that requests text input.
+ */
+export interface TCliInputTextPrompt<
+  T extends Record<string, unknown> = Record<string, unknown>,
+> extends TCliInputTransformPrompt<T, string> {
+  /**
+   * The type of prompt.
+   */
+  type: 'text';
 }
 
-export interface TCliTextPromptSyncValidationFnOptions
-  extends ICliTextPromptOptions {
-  validationFn: StringValidationFn;
+/**
+ * A prompt that validates text input.
+ */
+export interface TCliInputTextValidatePrompt<
+  T extends Record<string, unknown> = Record<string, unknown>,
+> extends TCliInputTextPrompt<T> {
+  /**
+   * The regular expression or function to validate the input.
+   */
+  validate: RegExp | ((value: string) => string | undefined | Promise<string | undefined>);
 }
 
-export interface TCliTextPromptAsyncValidationFnOptions
-  extends ICliTextPromptOptions {
-  validationFn: AsyncStringValidationFn;
+/**
+ * A prompt that requests text input with choices.
+ */
+export interface TCliInputTextChoicesPrompt<
+  T extends Record<string, unknown> = Record<string, unknown>,
+> extends TCliInputTextPrompt<T> {
+  /**
+   * The choices for the input.
+   */
+  choices: Record<string, string>;
 }
 
-export interface TCliTextPromptRegexValidationOptions
-  extends ICliTextPromptOptions {
-  validationRegex: RegExp;
-  format: string;
-}
-
-export interface ICliNumericIntegerOptions extends ICliTextPromptOptions {
+/**
+ * A prompt that requests a number input.
+ */
+export interface TCliInputNumberPrompt<
+  T extends Record<string, unknown> = Record<string, unknown>,
+> extends TCliInputTransformPrompt<T, number> {
+  /**
+   * The type of prompt.
+   */
+  type: 'number';
+  /**
+   * Whether the inpout should be an integer.
+   */
   integer?: boolean;
 }
 
-export interface ICliNumericPromptRangeOptions
-  extends ICliNumericIntegerOptions {
+/**
+ * A prompt that validates number input.
+ */
+export interface TCliInputNumberValidatePrompt<
+  T extends Record<string, unknown> = Record<string, unknown>,
+> extends TCliInputNumberPrompt<T> {
+  /**
+   * The function to validate the input.
+   */
+  validate: (value: number) => number | undefined | Promise<number | undefined>;
+}
+
+/**
+ * A prompt that requests a number within a range.
+ */
+export interface TCliInputNumberRangePrompt<
+  T extends Record<string, unknown> = Record<string, unknown>,
+> extends TCliInputNumberPrompt<T> {
+  /**
+   * The minimum value for the input.
+   */
   min: number;
+
+  /**
+   * The maximum value for the input.
+   */
   max: number;
 }
 
-export interface ICliNumericPromptSyncTransformOptions
-  extends ICliNumericIntegerOptions {
-  transformFn: NumericTransformFn;
+/**
+ * A prompt that requests a yes or no input.
+ */
+export interface TCliInputYesNoPrompt<
+T extends Record<string, unknown> = Record<string, unknown>,
+> extends ICliInputCommonPrompt<T, boolean> {
+  /**
+   * The type of prompt.
+   */
+  type: 'yesno';
 }
 
-export interface ICliNumericPromptAsyncTransformOptions
-  extends ICliNumericIntegerOptions {
-  transformFn: AsyncNumericTransformFn;
-}
+/**
+ * The options passed to the CLI.
+ */
+export interface ICliOptions {
+  /**
+   * The arguments passed to the CLI.
+   */
+  args: string[];
 
-export interface ICliNumericPromptSyncValidationFnOptions
-  extends ICliNumericIntegerOptions {
-  validationFn: NumericValidationFn;
-}
+  /**
+   * The banner to display at the top of the CLI.
+   */
+  banner: string;
 
-export interface ICliNumericPromptAsyncValidationFnOptions
-  extends ICliNumericIntegerOptions {
-  validationFn: AsyncNumericValidationFn;
-}
+  /**
+   * The name of the CLI.
+   */
+  name: string;
 
-export interface ICliBoolPromptOptions extends ICliTextPromptOptions {
-  negate?: boolean;
+  /**
+   * The description of the CLI.
+   */
+  description: string;
+
+  /**
+   * The version of the CLI.
+   */
+  version: string;
+
+  /**
+   * The URL to the CLI's help.
+   */
+  url: string;
+
+  /**
+   * The options to parse to the Deno `parseArgs` function.
+   */
+  parseOptions: ParseOptions;
 }

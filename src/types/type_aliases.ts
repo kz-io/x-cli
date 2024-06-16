@@ -1,227 +1,115 @@
-/**
- * @copyright 2020-2024 integereleven. All rights reserved. MIT license.
- * @file Type aliases for the module. For interfaces, see ./interfaces.ts.
- */
-
-import type {
-  ICliBoolPromptOptions,
-  ICliNumericIntegerOptions,
-  ICliNumericPromptAsyncTransformOptions,
-  ICliNumericPromptAsyncValidationFnOptions,
-  ICliNumericPromptRangeOptions,
-  ICliNumericPromptSyncTransformOptions,
-  ICliNumericPromptSyncValidationFnOptions,
-  ICliTextPromptOptions,
-  TCliTextPromptAsyncTransformOptions,
-  TCliTextPromptAsyncValidationFnOptions,
-  TCliTextPromptChoiceOptions,
-  TCliTextPromptDefinedDefaultValueOptions,
-  TCliTextPromptDefinedRequiredOptions,
-  TCliTextPromptRegexValidationOptions,
-  TCliTextPromptSyncTransformOptions,
-  TCliTextPromptSyncValidationFnOptions,
+import {
+  TAcknowledgeableTextPrompt,
+  TCliFnArgs,
+  TCliStateTextPrompt,
+  TCliTextBasePrompt,
+  TCliDivergencePrompt,
+  TCliInputYesNoPrompt,
+  TCliInputConfirmPrompt,
+  TCliInputTextPrompt,
+  TCliInputTextValidatePrompt,
+  TCliInputTextChoicesPrompt,
+  TCliInputNumberPrompt,
+  TCliInputNumberRangePrompt,
+  TCliInputNumberValidatePrompt,
 } from './interfaces.ts';
-import { ICliConfirmOptions } from './mod.ts';
 
-type ValidationFn<T extends string | number> = (
-  value: T,
-) => string | undefined;
+/**
+ * The types of text that can be displayed in the CLI regardless of verbosity level.
+ */
+export type CliTextTypes = 'label' | 'description' | 'complete';
 
-type AsyncValidationFn<T extends string | number> = (
-  value: T,
-) => Promise<string | undefined>;
+/**
+ * The types of stateful text that can be displayed in the CLI based on verbosity level.
+ */
+export type CliStateTextTypes = 'error' | 'warning' | 'info' | 'success';
 
-export type NumericValidationFn = ValidationFn<number>;
+/**
+ * The types of debug text that can be displayed in the CLI based on verbosity level.
+ */
+export type CliDebugTextTypes = 'debug' | 'trace';
 
-export type StringValidationFn = ValidationFn<string>;
+/**
+ * All types of text that can be displayed in the CLI.
+ 
+ */
+export type CliAllTextTypes =
+  | CliTextTypes
+  | CliStateTextTypes
+  | CliDebugTextTypes;
 
-export type AsyncNumericValidationFn = AsyncValidationFn<number>;
+/**
+ * The verbosity levels of the CLI.
+ */
+export type CliVerbosityLevel =
+  | 'all'
+  | 'none'
+  | CliDebugTextTypes
+  | Exclude<CliStateTextTypes, 'success'>;
 
-export type AsyncStringValidationFn = AsyncValidationFn<string>;
+/**
+ * A function that generates a string to display in the CLI.
+ */
+export type CliStringGeneratorFn<
+  T extends Record<string, unknown> = Record<string, unknown>,
+> = (args: TCliFnArgs<T>) => string | Promise<string>;
 
-type TransformFn<T extends string | number> = (value: T) => T;
+/**
+ * A function that generates a boolean to determine if a text message should be displayed in the CLI.
+ */
+export type CliWhenFn<
+  T extends Record<string, unknown> = Record<string, unknown>,
+> = (args: TCliFnArgs<T>) => boolean | Promise<boolean>;
 
-type AsyncTransformFn<T extends string | number> = (value: T) => Promise<T>;
+/**
+ * A function that acknowledges a text message in the CLI.
+ */
+export type CliTextAcknowledgementFn<
+  T extends Record<string, unknown> = Record<string, unknown>,
+> = (args: TCliFnArgs<T>, ack: boolean) => void | Promise<void>;
 
-export type NumericTransformFn = TransformFn<number>;
-
-export type AsyncNumericTransformFn = AsyncTransformFn<number>;
-
-export type StringTransformFn = TransformFn<string>;
-
-export type AsyncStringTransformFn = AsyncTransformFn<string>;
-
-export type CliTextPromptDefinedOptions<T extends string = string> =
-  | TCliTextPromptDefinedDefaultValueOptions<T>
-  | TCliTextPromptDefinedRequiredOptions
-  | (
-    & TCliTextPromptDefinedDefaultValueOptions<T>
-    & TCliTextPromptDefinedRequiredOptions
-  );
-
-export type CliNumericPromptDefinedOptions =
-  | TCliTextPromptDefinedDefaultValueOptions<number>
-  | TCliTextPromptDefinedRequiredOptions
-  | (
-    & TCliTextPromptDefinedDefaultValueOptions<number>
-    & TCliTextPromptDefinedRequiredOptions
-  );
-
-export type CliBooleanPromptDefinedOptions =
-  | TCliTextPromptDefinedDefaultValueOptions<boolean>
-  | TCliTextPromptDefinedRequiredOptions
-  | (
-    & TCliTextPromptDefinedDefaultValueOptions<boolean>
-    & TCliTextPromptDefinedRequiredOptions
-  );
-
-export type CliTextOptionDefined<T> = [T] extends [CliTextPromptDefinedOptions]
-  ? string
-  : (string | undefined);
-
-export type CliNumericOptionDefined<T> = [T] extends
-  [CliNumericPromptDefinedOptions] ? number : (number | undefined);
-
-export type CliBoolOptionDefined<T> = [T] extends
-  [CliBooleanPromptDefinedOptions] ? boolean : (boolean | undefined);
-
-export type CliTextOptions<
-  T extends Record<string, string> = Record<string, string>,
-  D extends string = Extract<keyof T, string>,
+/**
+ * The text prompts that can be displayed in the CLI.
+ */
+export type CliTextPrompt<
+  T extends Record<string, unknown> = Record<string, unknown>,
 > =
-  & (
-    | ICliTextPromptOptions
-    | TCliTextPromptSyncTransformOptions
-    | TCliTextPromptChoiceOptions<T>
-    | TCliTextPromptSyncValidationFnOptions
-    | TCliTextPromptRegexValidationOptions
-    | (
-      & TCliTextPromptSyncTransformOptions
-      & TCliTextPromptSyncValidationFnOptions
-    )
-    | (
-      & TCliTextPromptSyncTransformOptions
-      & TCliTextPromptRegexValidationOptions
-    )
-    // deno-lint-ignore ban-types
-    | (TCliTextPromptSyncTransformOptions & TCliTextPromptChoiceOptions<T>)
-  )
-  & ({} | CliTextPromptDefinedOptions<D>);
+  | TCliTextBasePrompt<T>
+  | TCliStateTextPrompt<T>
+  | TAcknowledgeableTextPrompt<T>;
 
-export type CliTextOptionsRequest<
-  T extends Record<string, string> = Record<string, string>,
-  D extends string = Extract<keyof T, string>,
-> = { type: 'text'; name: string } & CliTextOptions<T, D>;
 
-export type AsyncCliTextOptions<
-  T extends Record<string, string> = Record<string, string>,
-  D extends string = Extract<keyof T, string>,
-> =
-  & (
-    | TCliTextPromptAsyncTransformOptions
-    | TCliTextPromptAsyncValidationFnOptions
-    | (
-      & TCliTextPromptSyncTransformOptions
-      & TCliTextPromptAsyncValidationFnOptions
-    )
-    | (
-      & TCliTextPromptAsyncTransformOptions
-      & TCliTextPromptSyncValidationFnOptions
-    )
-    | (
-      & TCliTextPromptAsyncTransformOptions
-      & TCliTextPromptAsyncValidationFnOptions
-    )
-    | (
-      & TCliTextPromptAsyncTransformOptions
-      & TCliTextPromptRegexValidationOptions
-    )
-    // deno-lint-ignore ban-types
-    | (TCliTextPromptAsyncTransformOptions & TCliTextPromptChoiceOptions<T>)
-  )
-  & ({} | CliTextPromptDefinedOptions<D>);
+export type CliInputTextPrompts<T extends Record<string, unknown> = Record<string, unknown>> =
+  | TCliInputTextPrompt<T>
+  | TCliInputTextValidatePrompt<T>
+  | TCliInputTextChoicesPrompt<T>;
 
-export type AsyncCliTextOptionsRequest<
-  T extends Record<string, string> = Record<string, string>,
-  D extends string = Extract<keyof T, string>,
-> = { type: 'text-async'; name: string } & AsyncCliTextOptions<T, D>;
+export type CliInputNumberPrompts<T extends Record<string, unknown> = Record<string, unknown>> =
+  | TCliInputNumberPrompt<T>
+  | TCliInputNumberRangePrompt<T>
+  | TCliInputNumberValidatePrompt<T>;
 
-export type CliNumericOptions =
-  & (
-    | ICliNumericIntegerOptions
-    | ICliNumericPromptSyncTransformOptions
-    | ICliNumericPromptRangeOptions
-    | ICliNumericPromptSyncValidationFnOptions
-    | (
-      & ICliNumericPromptSyncTransformOptions
-      & ICliNumericPromptSyncValidationFnOptions
-    )
-    // deno-lint-ignore ban-types
-    | (ICliNumericPromptSyncTransformOptions & ICliNumericPromptRangeOptions)
-  )
-  & ({} | CliNumericPromptDefinedOptions);
+/**
+ * The input prompts that can be displayed in the CLI.
+ */
+export type CliInputPrompt<T extends Record<string, unknown> = Record<string, unknown>> = 
+  | TCliInputTextPrompt<T>
+  | TCliInputTextValidatePrompt<T>
+  | TCliInputTextChoicesPrompt<T>
+  | TCliInputNumberPrompt<T>
+  | TCliInputNumberRangePrompt<T>
+  | TCliInputNumberValidatePrompt<T>
+  | TCliInputYesNoPrompt<T>
+  | TCliInputConfirmPrompt<T>;
 
-export type CliNumericOptionsRequest =
-  & { type: 'numeric'; name: string }
-  & CliNumericOptions;
+/**
+ * A function that formats text in the CLI.
+ */
+export type CliFormatFn = (input: string) => string;
 
-export type AsyncCliNumericOptions =
-  & (
-    | ICliNumericPromptAsyncTransformOptions
-    | ICliNumericPromptAsyncValidationFnOptions
-    | (
-      & ICliNumericPromptSyncTransformOptions
-      & ICliNumericPromptAsyncValidationFnOptions
-    )
-    | (
-      & ICliNumericPromptAsyncTransformOptions
-      & ICliNumericPromptSyncValidationFnOptions
-    )
-    | (
-      & ICliNumericPromptAsyncTransformOptions
-      & ICliNumericPromptAsyncValidationFnOptions
-    )
-    | (
-      & ICliNumericPromptAsyncTransformOptions
-      & ICliNumericPromptRangeOptions
-    )
-    // deno-lint-ignore ban-types
-    | (ICliNumericPromptAsyncTransformOptions & ICliNumericPromptRangeOptions)
-  )
-  & ({} | CliNumericPromptDefinedOptions);
-
-export type AsyncCliNumericOptionsRequest = {
-  type: 'numeric-async';
-  name: string;
-} & AsyncCliNumericOptions;
-
-export type ParsedCliArgs = {
-  // deno-lint-ignore no-explicit-any
-  [x: string]: any;
-  _: (string | number)[];
-  '--'?: string[] | undefined;
-};
-
-export type CliBoolOptions =
-  & ICliBoolPromptOptions
-  // deno-lint-ignore ban-types
-  & ({} | CliBooleanPromptDefinedOptions);
-
-export type CliBoolOptionsRequest =
-  & { type: 'bool'; name: string }
-  & CliBoolOptions;
-
-export type CliConfirmOptionsRequest =
-  & { type: 'confirm'; name: string }
-  & ICliConfirmOptions;
-
-export type CliOptionsRequest<
-  T extends Record<string, string> = Record<string, string>,
-  D extends string = Extract<keyof T, string>,
-> =
-  | CliTextOptionsRequest<T, D>
-  | AsyncCliTextOptionsRequest<T, D>
-  | CliNumericOptionsRequest
-  | AsyncCliNumericOptionsRequest
-  | CliBoolOptionsRequest
-  | CliConfirmOptionsRequest;
+/**
+ * All of the prompts that can be displayed in the CLI.
+ */
+export type CliPrompts<
+  T extends Record<string, unknown> = Record<string, unknown>,
+> = CliTextPrompt<T> | CliInputPrompt<T> | TCliDivergencePrompt<T>;
